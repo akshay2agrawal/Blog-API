@@ -1,100 +1,111 @@
 import express from "express";
 import bodyParser from "body-parser";
-import methodOverride from 'method-override';
+
 const app = express();
-const port = 3000;
+const port = 4000;
 
+// In-memory data store
+let posts = [
+  {
+    id: 1,
+    title: "The Rise of Decentralized Finance",
+    content:
+      "Decentralized Finance (DeFi) is an emerging and rapidly evolving field in the blockchain industry. It refers to the shift from traditional, centralized financial systems to peer-to-peer finance enabled by decentralized technologies built on Ethereum and other blockchains. With the promise of reduced dependency on the traditional banking sector, DeFi platforms offer a wide range of services, from lending and borrowing to insurance and trading.",
+    author: "Alex Thompson",
+    date: "2024-08-01T10:00:00Z",
+  },
+  {
+    id: 2,
+    title: "The Impact of Artificial Intelligence on Modern Businesses",
+    content:
+      "Artificial Intelligence (AI) is no longer a concept of the future. It's very much a part of our present, reshaping industries and enhancing the capabilities of existing systems. From automating routine tasks to offering intelligent insights, AI is proving to be a boon for businesses. With advancements in machine learning and deep learning, businesses can now address previously insurmountable problems and tap into new opportunities.",
+    author: "Mia Williams",
+    date: "2024-08-05T14:30:00Z",
+  },
+  {
+    id: 3,
+    title: "Sustainable Living: Tips for an Eco-Friendly Lifestyle",
+    content:
+      "Sustainability is more than just a buzzword; it's a way of life. As the effects of climate change become more pronounced, there's a growing realization about the need to live sustainably. From reducing waste and conserving energy to supporting eco-friendly products, there are numerous ways we can make our daily lives more environmentally friendly. This post will explore practical tips and habits that can make a significant difference.",
+    author: "Samuel Green",
+    date: "2024-08-10T09:15:00Z",
+  },
+];
 
-app.use(express.static("public"));
+let lastId = 3;
+
+// Middleware
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-// Middleware to override method based on _method field
-app.use(methodOverride('_method'));
-let blogs = {};
 
-app.get("/", (req, res) => {
-  if (Object.keys(blogs).length == 0) {
-    res.render("index.ejs");
+//GET All posts
+app.get("/posts", (req, res) => {
+  res.json(posts);
+});
+
+//GET a specific post by id
+app.get("/posts/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  const post = posts.find((post) => post.id === id);
+
+  if (post === undefined) {
+    res.status(404).json({ message: "ID not found. Provide a valid ID" });
   } else {
-    res.render("index.ejs", { blogs: blogs });
+    res.json(post);
   }
 });
 
+//POST a new post
+app.post("/posts", (req, res) => {
+  if (
+    req.body.title === undefined ||
+    req.body.content === undefined ||
+    req.body.author === undefined
+  )
+    res.send(404).json("Incompete information");
 
-app.get("/blogs", (req, res) => {
-  res.render("blogs.ejs");
+  const newPost = {
+    id: posts.length + 1,
+    title: req.body.title,
+    content: req.body.content,
+    author: req.body.author,
+    date: new Date(),
+  };
+  posts.push(newPost);
+  res.json(newPost);
 });
 
-// Blog Display
-app
-  .route("/blog/:title")
-  .get((req, res) => {
-    let title = req.params.title;
-
-    if (!blogs[title]) {
-      res.send(`blog ${title} does not exist`);
-    }
-
-    res.render("blog.ejs", { title: title, content: blogs[title] });
-  })
-  .delete((req, res) => {
-    let title = req.params.title
-    if(!blogs[title]){
-      res.send("Title does not exist!");
-    }
-    delete blogs[title];
-
-    res.render("index.ejs", {message: "Blog deleted successfully!"});
-  });
-
-// Blog creation  
-app
-  .route("/create")
-  .get((req, res) => {
-    res.render("create_blog.ejs");
-  })
-  .post((req, res) => {
-    let data = {
-      title: req.body["title"],
-      content: req.body["blog-content"],
-      message: "Blog created Successfully!"
+//PATCH a post when you just want to update one parameter
+app.patch("/posts/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = posts.findIndex((post) => post.id === id);
+  if (index === -1) {
+    res.sendStatus(404);
+  } else {
+    posts[index] = {
+      id: posts[index].id,
+      title: req.body.title || posts[index].title,
+      content: req.body.content || posts[index].content,
+      author: req.body.author || posts[index].author,
+      date: posts[index].date,
     };
-    blogs[data.title] = data.content;
-    // res.sendStatus(200);
-    res.render("blog.ejs", data);
-  });
+    res.json(posts[index]);
+  }
+});
 
+//DELETE a specific post by providing the post id.
+app.delete("/posts/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = posts.findIndex((post) => post.id === id);
 
-// Blog Editing 
-app
-  .route("/blog/:title/edit")
-  .get((req, res) => {
-    let title = req.params.title;
-
-    if (!blogs[title]) {
-      res.send(`blog ${title} does not exist`);
-    }
-
-    let blog = {"title": title, "content": blogs[title]}
-    // console.log(blog);
-    res.render("create_blog.ejs", blog );
-  })
-  .put((req, res) => {
-    // console.log(req.params.title);
-    if(!blogs[req.params.title]){
-      res.send("Blog does not exist!")
-    }
-
-    let data = {
-      title: req.params.title,
-      content: req.body["blog-content"],
-      message: req.params.title + " edited Successfully!"
-    };
-    blogs[data.title] = data.content;
-
-    // res.sendStatus(200);
-    res.render("blog.ejs", data);
-  });
+  if (index === -1) {
+    res.sendStatus(404);
+  } else {
+    posts.splice(index);
+    res.sendStatus(200);
+  }
+});
 
 app.listen(port, () => {
-  console.log(`Listening on port ${port}`);
+  console.log(`API is running at http://localhost:${port}`);
 });
