@@ -1,4 +1,4 @@
-# BLog Web API
+# BLOG Web API
 
 This project creates an API and an application which accesses that API. The learning of this project is creation of API's, using it in your own application demonstrating API interaction.
 
